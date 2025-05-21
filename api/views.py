@@ -107,7 +107,21 @@ class ExpertiseRequestViewSet(viewsets.ModelViewSet):
             )
 
         # ذخیره درخواست
-        serializer.save(seller=seller, buyer=buyer)
+        instance = serializer.save(seller=seller, buyer=buyer)
+        
+        # Check if both approvals are true and update status accordingly
+        if instance.seller_approval and instance.buyer_approval:
+            instance.status = 'approved'
+            instance.save()
+    
+    def get_queryset(self):
+        # Override to ensure status is correct for all retrieved objects
+        queryset = super().get_queryset()
+        for request in queryset:
+            if request.seller_approval and request.buyer_approval and request.status == 'pending':
+                request.status = 'approved'
+                request.save()
+        return queryset
 
     def partial_update(self, request, pk=None):
         expertise_request = self.get_object()
@@ -149,6 +163,7 @@ class ExpertiseRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
+        print("hi")
         expertise_request = self.get_object()
         user_id = request.data.get('user')
         if not user_id:
